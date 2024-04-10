@@ -15,7 +15,6 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 
 export const getDocuments = async (userQuery: object , url: string, privateKey: string) => {
-    console.log("Fetchin docs..");
     const client = createClient(url, privateKey);
   
     const embeddings = new MistralAIEmbeddings({
@@ -28,12 +27,11 @@ export const getDocuments = async (userQuery: object , url: string, privateKey: 
       queryName: "match_documents",
     });
   
-    const result = await vectorStore.similaritySearch(userQuery.query, 5);
+    const result = await vectorStore.similaritySearch(userQuery.query, 4);
   
     let docs = "";
-  
     for (let i = 0; i < result.length; i++) {
-      docs = docs + "\n Document " + i + ": " + result[i].metadata.name;
+      docs = docs + "\n Document " + i + ": \n" + result[i].metadata.name;
       +" " + result[i].metadata.section;
       docs = docs + result[i].pageContent;
     }

@@ -11,40 +11,43 @@
 import MistralClient from "https://esm.sh/@mistralai/mistralai";
 
 export const getLLmResponse = async (userQuery: object, documents: object) => {
-    console.log("Fetching mistral response...");
     const apiKey = Deno.env.MISTRAL_API_KEY!;
   
     const client = new MistralClient(apiKey);
 
-    const historique = "\n##HISTORIQUE##\n" + userQuery.history
-  
-    const prefix = "##DOCUMENTS##" + documents.documentString;
-  
-    const suffix = "\n##INSTRUCTIONS##" +
-      "\nVous êtes dorénavant un assistant spécialisé en santé. Votre but est de répondre aux questions de l'utilisateur qui n'a aucune connaissance en médecine. Vous devez obéir aux règles." +
-      "\nVoici les règles à respecter:" +
-      "\n0. Soyez polis envers l'utilisateur" +
-      "\n1. Conseillez et répondez à l'utilisateur de manière pertinente en quelques phrases." +
-      "\n2. Faites des explications simples et vulgarisez les termes médicaux pour que l'utilisateur puisse comprendre." +
-      "\n3. Utilisez uniquement les documents pour formuler votre réponse. Si la réponse n'est pas dans les documents, répondez uniquement que vous ne savez pas sans donner d'informations supplémentaires." +
-      "\nA présent, répondez à l'utilisateur";
+    const historique = "\n##HISTORIQUE DE CONVERSATION##\n" + userQuery.history;
 
-    let prePrompt = ""
-    if (input.history.lenght > 1){
-        prePrompt = prefix + documents + historique + suffix;
+    const prefix = "##DOCUMENTS##" + documents.stringDocs;
+  
+    const suffix =
+    "\n##INSTSTRUCTIONS##" +
+    "\nDésormais, vous êtes un assistant spécialisé en santé. Votre objectif est d'expliquer la médecine de manière simple et compréhensible." +
+    "\nVoici les règles à respecter :" +
+    "\n1. Soyez empathique." +
+    "\n2. Il vous est interdit de poser un diagnostic." +
+    "\n3. Il est indispensable d'expliquer simplement chaque terme médical." +
+    "\n4. Utilisez uniquement les documents pour formuler votre réponse. Si la réponse n'est pas dans les documents, répondez simplement que vous ne savez pas sans donner d'informations supplémentaires." +
+    "\nÀ présent, répondez à l'utilisateur en quelques phrases seulement.";
+  
+    let prePrompt = "";
+    if (userQuery.history.length > 1){
+        prePrompt = historique + prefix + suffix;
     }else{
-        prePrompt = prefix + documents + suffix;
-    }   
-    
+        prePrompt = prefix  + suffix;
+    }  
+
+    console.log(prePrompt);
+    console.log(userQuery.query);
   
     const chatStreamResponse = await client.chatStream({
       model: "mistral-medium-latest",
       temperature: 0.1,
-      maxTokens: 0,
-      topP: 0.9,
+      topP: 1,
+      maxTokens: 50,
+      randomSeed: 1337,
       messages: [
         { role: "system", content: prePrompt },
-        { role: "user", content: userQuery.query },
+        { role: "user", content: userQuery.query},
       ],
     });
   

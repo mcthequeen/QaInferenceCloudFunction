@@ -1,61 +1,79 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getDocuments } from "./getDocuments.ts";
 import { getLLmResponse } from "./getLLmResponse.ts";
-
-
+import { corsHeaders } from "../_shared/cors.ts";
 
 Deno.serve(async (req) => {
-
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
   //Client supabase to auth the user
-  const supabaseUrl = Deno.env.get("_URL");
-  const anonKey = Deno.env.get("_PRIVATE_KEY");
-  const supabase = createClient(supabaseUrl!, anonKey!);
+  try {
+    const supabaseUrl = Deno.env.get("_URL");
+    const anonKey = Deno.env.get("_ANON_KEY");
+    console.log("Anon key", anonKey);
+    const authHeader = req.headers.get('Authorization')!
+    const supabaseClient = createClient(
+      Deno.env.get('_URL') ?? '',
+      Deno.env.get('_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
+    )
 
-  //Get the body request
-  const body = await req.json();
-  const { userQuery, jwt } = body;
+    //Get the body request
+    const body = await req.json();
+    const { userQuery, jwt, chatId } = body;
 
-  //Check user jwt status
-  const {
-    data: { user },
-  } = await supabase.auth.getUser(jwt);
+    //Check user jwt status
+    const {
+      data: { user },
+    } = await supabaseClient.auth.getUser(jwt);
 
-  if (user) {
+    if (user) {
+      //Fetch document in supabase vector store
+      const documentsOutput = await getDocuments(
+        userQuery,
+        supabaseUrl!,
+        anonKey!,
+      );
 
-    //Fetch document in supabase vector store
-    const documents = await getDocuments(
-      userQuery,
-      supabaseUrl!,
-      anonKey!,
-    );
+      //Get the mistral async generator to stream
+      const streamMistral = await getLLmResponse(userQuery, documentsOutput);
+      console.log(documentsOutput.stringDocs);
+      console.log("documents: ", documentsOutput.ObjectDocument);
+      console.log("chatId:", chatId);
+      console.log("Type of chatId: ", typeof chatId);
 
-    //Get the mistral async generator to stream
-    const streamMistral = await getLLmResponse(userQuery, documents);
-    let sendDocuments = true;
-    const stream = new ReadableStream({
-      async start(controller) {
-        for await (const chunk of streamMistral) {
-          if (sendDocuments){
-            controller.enqueue(
-              new TextEncoder().encode(documents.stringDocs),
-            );
-              sendDocuments = false;
-          };
-          if (chunk.choices[0].delta.content !== undefined) {
-            controller.enqueue(
-              new TextEncoder().encode(chunk.choices[0].delta.content),
-            );
+      const { data } = await supabaseClient.from("chats").update({
+        documents: documentsOutput.ObjectDocument,
+      }).eq("id", chatId);
+
+      const stream = new ReadableStream({
+        async start(controller) {
+          for await (const chunk of streamMistral) {
+            if (chunk.choices[0].delta.content !== undefined) {
+              controller.enqueue(
+                new TextEncoder().encode(chunk.choices[0].delta.content),
+              );
+            }
           }
-        }
-        controller.close();
-      },
-    });
-    return new Response(stream, {
-      headers: { "Content-Type": "application/json" },
-    });
-  } else {
-    return new Response(JSON.stringify({ message: "Jwt Auth error" }), {
-      headers: { "Content-Type": "application/json" },
+          controller.close();
+        },
+      });
+      return new Response(stream, {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "text/event-stream",
+        },
+      });
+    } else {
+      return new Response(JSON.stringify({ message: "Jwt Auth error" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+  } catch (error) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 400,
     });
   }
 });
