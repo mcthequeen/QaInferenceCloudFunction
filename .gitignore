@@ -1,5 +1,6 @@
 postBody.json
-./supabase/functions/.env
-./supabase/.temp
-./supabase/.branches
-./.vscode
+*.env
+*.vscode
+*.branches
+*.temp
+
