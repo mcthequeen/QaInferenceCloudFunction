@@ -1,89 +1,35 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import MistralClient from "https://esm.sh/@mistralai/mistralai";
-import { SupabaseVectorStore } from "https://esm.sh/@langchain/community/vectorstores/supabase";
-import { MistralAIEmbeddings } from "https://esm.sh/@langchain/mistralai";
+import { getDocuments } from "./getDocuments.ts";
+import { getLLmResponse } from "./getLLmResponse.ts";
 
-/*Functions*/
-const getLLmResponse = async (input: object, documents: string) => {
-  console.log("Fetching mistral response...");
-  const apiKey = Deno.env.MISTRAL_API_KEY!;
 
-  const client = new MistralClient(apiKey);
-
-  const prefix = "##DOCUMENTS##" + documents;
-
-  const suffix = "\n##INSTRUCTIONS##" +
-    "\nVous êtes dorénavant un assistant spécialisé en santé. Votre but est de répondre aux questions de l'utilisateur qui n'a aucune connaissance en médecine. Vous devez obéir aux règles." +
-    "\nVoici les règles à respecter:" +
-    "\n0. Soyez polis envers l'utilisateur" +
-    "\n1. Conseillez et répondez à l'utilisateur de manière pertinente en quelques phrases." +
-    "\n2. Faites des explications simples et vulgarisez les termes médicaux pour que l'utilisateur puisse comprendre." +
-    "\n3. Utilisez uniquement les documents pour formuler votre réponse. Si la réponse n'est pas dans les documents, répondez uniquement que vous ne savez pas sans donner d'informations supplémentaires." +
-    "\nA présent, répondez à l'utilisateur";
-
-  const prePrompt = prefix + documents + suffix;
-
-  const chatStreamResponse = await client.chatStream({
-    model: "mistral-medium-latest",
-    temperature: 0.1,
-    maxTokens: 0,
-    topP: 0.9,
-    messages: [
-      { role: "system", content: prePrompt },
-      { role: "user", content: input.query },
-    ],
-  });
-
-  return chatStreamResponse;
-};
-
-const getDocuments = async (query: string, url: string, privateKey: string) => {
-  console.log("Fetchin docs..");
-  const client = createClient(url, privateKey);
-
-  /* Embed queries */
-  const embeddings = new MistralAIEmbeddings({
-    apiKey: Deno.env.MISTRAL_API_KEY,
-  });
-
-  const vectorStore = await SupabaseVectorStore.fromExistingIndex(embeddings, {
-    client,
-    tableName: "documents",
-    queryName: "match_documents",
-  });
-
-  const result = await vectorStore.similaritySearch(query, 5);
-
-  let docs = "";
-
-  for (let i = 0; i < result.length; i++) {
-    docs = docs + "\n Document " + i + ": " + result[i].metadata.name;
-    +" " + result[i].metadata.section;
-    docs = docs + result[i].pageContent;
-  }
-
-  const output = { ObjectDocument: result, stringDocs: docs };
-  return output;
-};
 
 Deno.serve(async (req) => {
+
+  //Client supabase to auth the user
   const supabaseUrl = Deno.env.get("_URL");
   const anonKey = Deno.env.get("_PRIVATE_KEY");
-
   const supabase = createClient(supabaseUrl!, anonKey!);
 
+  //Get the body request
   const body = await req.json();
   const { userQuery, jwt } = body;
 
+  //Check user jwt status
   const {
     data: { user },
   } = await supabase.auth.getUser(jwt);
+
   if (user) {
+
+    //Fetch document in supabase vector store
     const documents = await getDocuments(
-      userQuery.query,
+      userQuery,
       supabaseUrl!,
       anonKey!,
     );
+
+    //Get the mistral async generator to stream
     const streamMistral = await getLLmResponse(userQuery, documents);
     let sendDocuments = true;
     const stream = new ReadableStream({
