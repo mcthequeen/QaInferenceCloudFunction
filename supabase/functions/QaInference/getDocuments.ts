@@ -26,14 +26,19 @@ export const getDocuments = async (userQuery: object , url: string, privateKey: 
       tableName: "documents",
       queryName: "match_documents",
     });
-  
-    const result = await vectorStore.similaritySearch(userQuery.query, 4);
+
+    let result;
+    if(userQuery.history.length>1){
+       result = await vectorStore.similaritySearch(userQuery.history, 4);
+    } else{
+      result = await vectorStore.similaritySearch(userQuery.query, 4);
+    }
   
     let docs = "";
     for (let i = 0; i < result.length; i++) {
       docs = docs + "\n Document " + i + ": \n" + result[i].metadata.name;
       +" " + result[i].metadata.section;
-      docs = docs + result[i].pageContent;
+      docs = docs + " " + result[i].pageContent;
     }
   
     const output = { ObjectDocument: result, stringDocs: docs };

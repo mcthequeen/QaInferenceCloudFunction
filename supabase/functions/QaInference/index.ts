@@ -11,11 +11,10 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("_URL");
     const anonKey = Deno.env.get("_ANON_KEY");
-    console.log("Anon key", anonKey);
     const authHeader = req.headers.get('Authorization')!
     const supabaseClient = createClient(
-      Deno.env.get('_URL') ?? '',
-      Deno.env.get('_ANON_KEY') ?? '',
+      supabaseUrl,
+      anonKey ,
       { global: { headers: { Authorization: authHeader } } }
     )
 
@@ -38,11 +37,7 @@ Deno.serve(async (req) => {
 
       //Get the mistral async generator to stream
       const streamMistral = await getLLmResponse(userQuery, documentsOutput);
-      console.log(documentsOutput.stringDocs);
-      console.log("documents: ", documentsOutput.ObjectDocument);
-      console.log("chatId:", chatId);
-      console.log("Type of chatId: ", typeof chatId);
-
+      
       const { data } = await supabaseClient.from("chats").update({
         documents: documentsOutput.ObjectDocument,
       }).eq("id", chatId);

@@ -14,37 +14,33 @@ export const getLLmResponse = async (userQuery: object, documents: object) => {
     const apiKey = Deno.env.MISTRAL_API_KEY!;
   
     const client = new MistralClient(apiKey);
+    
+    const history = "#Historique:\n" + userQuery.history;
 
-    const historique = "\n##HISTORIQUE DE CONVERSATION##\n" + userQuery.history;
+    const intro = "Vous êtes un assistant en santé. Votre tâche est d'apporter de l'information." + 
+    "En vous basant sur les documents, répondez à l'utilisateur de manière vulgarisée."+
+    "\n\n#Documents:\n" + documents.stringDocs;
+    const instruction = "\n\n#Instructions:\n" + 
+    "##Répondre:\nVous devez uniquement vous baser sur les documents pour formuler votre réponse. Si l'information n'est pas contenue dans les documents, répondez 'Je ne peux pas répondre.'. Soyez naturel, poli et rassurant. Ne faites pas de diagnostic.\n\n##Vulgariser:\nLes termes médicaux doivent compréhensibles pour tous. Adaptez votre discours avec des mots simples.";
+  
 
-    const prefix = "##DOCUMENTS##" + documents.stringDocs;
-  
-    const suffix =
-    "\n##INSTSTRUCTIONS##" +
-    "\nDésormais, vous êtes un assistant spécialisé en santé. Votre objectif est d'expliquer la médecine de manière simple et compréhensible." +
-    "\nVoici les règles à respecter :" +
-    "\n1. Soyez empathique." +
-    "\n2. Il vous est interdit de poser un diagnostic." +
-    "\n3. Il est indispensable d'expliquer simplement chaque terme médical." +
-    "\n4. Utilisez uniquement les documents pour formuler votre réponse. Si la réponse n'est pas dans les documents, répondez simplement que vous ne savez pas sans donner d'informations supplémentaires." +
-    "\nÀ présent, répondez à l'utilisateur en quelques phrases seulement.";
-  
+
+
     let prePrompt = "";
     if (userQuery.history.length > 1){
-        prePrompt = historique + prefix + suffix;
+        prePrompt = history + intro + instruction;
     }else{
-        prePrompt = prefix  + suffix;
+        prePrompt = intro + instruction;
     }  
 
     console.log(prePrompt);
-    console.log(userQuery.query);
-  
+     
     const chatStreamResponse = await client.chatStream({
-      model: "mistral-medium-latest",
+      model: "open-mixtral-8x7b",
       temperature: 0.1,
       topP: 1,
-      maxTokens: 50,
-      randomSeed: 1337,
+      maxTokens: 1024,
+      randomSeed: 42,
       messages: [
         { role: "system", content: prePrompt },
         { role: "user", content: userQuery.query},
