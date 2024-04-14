@@ -14,12 +14,23 @@ import { MistralAIEmbeddings } from "https://esm.sh/@langchain/mistralai";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 
-export const getDocuments = async (userQuery: object , url: string, privateKey: string) => {
+export const getDocuments = async (userQuery: Array , url: string, privateKey: string) => {
     const client = createClient(url, privateKey);
+
+    let query = '';
+
+    for(let userQueryIndex=0 ; userQueryIndex<userQuery.length ; userQueryIndex++ ){
+      if(userQuery[userQueryIndex].role == "user"){
+        query += userQuery[userQueryIndex].content + " ";
+      }
+    }
+
+    console.log("Query for documents: ", query);
   
     const embeddings = new MistralAIEmbeddings({
       apiKey: Deno.env.MISTRAL_API_KEY!,
     });
+    
   
     const vectorStore = await SupabaseVectorStore.fromExistingIndex(embeddings, {
       client,
@@ -27,12 +38,8 @@ export const getDocuments = async (userQuery: object , url: string, privateKey: 
       queryName: "match_documents",
     });
 
-    let result;
-    if(userQuery.history.length>1){
-       result = await vectorStore.similaritySearch(userQuery.history, 4);
-    } else{
-      result = await vectorStore.similaritySearch(userQuery.query, 4);
-    }
+    const result = await vectorStore.similaritySearch(query, 4);
+
   
     let docs = "";
     for (let i = 0; i < result.length; i++) {
@@ -40,6 +47,8 @@ export const getDocuments = async (userQuery: object , url: string, privateKey: 
       +" " + result[i].metadata.section;
       docs = docs + " " + result[i].pageContent;
     }
+
+    console.log("Docs: ", docs);
   
     const output = { ObjectDocument: result, stringDocs: docs };
     return output;
