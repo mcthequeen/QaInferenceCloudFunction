@@ -58,8 +58,8 @@ export const getDocuments = async (
 
   let strings = "";  
   for (let i = 0; i < data.length; i++) {
-    strings += "Document: " + data[i].metadata.name
-    strings += data[i].content
+    strings += "Document: " + i;
+    strings += data[i].content;
   }
 
   const output = {stringDocs : strings, ObjectDocument : data}
