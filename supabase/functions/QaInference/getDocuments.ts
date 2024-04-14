@@ -8,48 +8,61 @@
  * @returns {Promise<object>} Objet contenant les documents similaires sous forme de chaîne de caractères et d'objets.
  */
 
-
 import { SupabaseVectorStore } from "https://esm.sh/@langchain/community/vectorstores/supabase";
-import { MistralAIEmbeddings } from "https://esm.sh/@langchain/mistralai";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import MistralClient from "https://esm.sh/@mistralai/mistralai";
 
+export const getDocuments = async (
+  userQuery: Array,
+  url: string,
+  privateKey: string,
+) => {
+  const supabase = createClient(url, privateKey);
 
-export const getDocuments = async (userQuery: Array , url: string, privateKey: string) => {
-    const client = createClient(url, privateKey);
+  console.log(url);
+  let query = "";
 
-    let query = '';
-
-    for(let userQueryIndex=0 ; userQueryIndex<userQuery.length ; userQueryIndex++ ){
-      if(userQuery[userQueryIndex].role == "user"){
-        query += userQuery[userQueryIndex].content + " ";
-      }
+  for (
+    let userQueryIndex = 0; userQueryIndex < userQuery.length; userQueryIndex++
+  ) {
+    if (userQuery[userQueryIndex].role == "user") {
+      query += userQuery[userQueryIndex].content;
     }
+  }
 
-    console.log("Query for documents: ", query);
-  
-    const embeddings = new MistralAIEmbeddings({
-      apiKey: Deno.env.MISTRAL_API_KEY!,
+  console.log("Query for documents: ", query);
+
+  const apiKey = Deno.env.MISTRAL_API_KEY!;
+
+  const mistralClient = new MistralClient(apiKey);
+
+  const embeddingsResponse = await mistralClient.embeddings({
+    model: "mistral-embed",
+    input: [query],
+  });
+
+  const embededResult = embeddingsResponse.data[0].embedding;
+
+  console.log(embededResult[0]);
+
+  let { data, error } = await supabase
+    .rpc("hybrid_search", {
+      full_text_weight : 5,
+      match_count: 6,
+      query_embedding: embededResult,
+      query_text: query,
+      rrf_k: 50,
+      semantic_weight: 1,
     });
-    
-  
-    const vectorStore = await SupabaseVectorStore.fromExistingIndex(embeddings, {
-      client,
-      tableName: "documents",
-      queryName: "match_documents",
-    });
 
-    const result = await vectorStore.similaritySearch(query, 4);
 
-  
-    let docs = "";
-    for (let i = 0; i < result.length; i++) {
-      docs = docs + "\n Document " + i + ": \n" + result[i].metadata.name;
-      +" " + result[i].metadata.section;
-      docs = docs + " " + result[i].pageContent;
-    }
+  let strings = "";  
+  for (let i = 0; i < data.length; i++) {
+    strings += "Document: " + data[i].metadata.name
+    strings += data[i].content
+  }
 
-    console.log("Docs: ", docs);
-  
-    const output = { ObjectDocument: result, stringDocs: docs };
-    return output;
-  };
+  const output = {stringDocs : strings, ObjectDocument : data}
+
+  return output;
+};

@@ -13,8 +13,8 @@ Deno.serve(async (req) => {
     const anonKey = Deno.env.get("_ANON_KEY");
     const authHeader = req.headers.get('Authorization')!
     const supabaseClient = createClient(
-      supabaseUrl,
-      anonKey ,
+      supabaseUrl!,
+      anonKey!,
       { global: { headers: { Authorization: authHeader } } }
     )
 
@@ -22,6 +22,8 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { userQuery, jwt, chatId } = body;
 
+
+    
     //Check user jwt status
     const {
       data: { user },
