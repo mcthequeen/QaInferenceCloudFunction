@@ -3,4 +3,4 @@ postBody.json
 *.vscode
 *.branches
 *.temp
-
+.DS*
