@@ -21,11 +21,9 @@ export const getLLmResponse = async (userQuery: Array, documents: object) => {
     const instruction = "\n\n#Instructions:\n" + 
     "##Répondre:\nVous devez uniquement vous baser sur les documents pour formuler votre réponse. Si l'information n'est pas contenue dans les documents, répondez 'Je ne peux pas répondre.'. Soyez empathique, poli et rassurant. Ne faites pas de diagnostic. Ne prescrivez pas de médicaments. Faites une réponse courte. Corrigez l'utilisateur si il se trompe.\n\n##Vulgariser:\nLes termes médicaux doivent compréhensibles pour tous, même pour un enfant. Utilisez un language simple. Inutile de renvoyer vers un professionel de santé.";
     const prePrompt = intro + instruction;
-
-    console.log(prePrompt)
+    
     
     const messages = [{ role: "system", content: prePrompt }];
-
     for(let userQueryIndex=0 ; userQueryIndex<userQuery.length ; userQueryIndex++ ){
       messages.push(userQuery[userQueryIndex]);
     }

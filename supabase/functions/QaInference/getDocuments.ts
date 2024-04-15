@@ -18,10 +18,10 @@ export const getDocuments = async (
   privateKey: string,
 ) => {
   const supabase = createClient(url, privateKey);
-
-  console.log(url);
   let query = "";
 
+
+  //Get only the user query in the userqQuery (containing also the preivous assistant response)
   for (
     let userQueryIndex = 0; userQueryIndex < userQuery.length; userQueryIndex++
   ) {
@@ -30,20 +30,14 @@ export const getDocuments = async (
     }
   }
 
-  console.log("Query for documents: ", query);
-
   const apiKey = Deno.env.MISTRAL_API_KEY!;
-
   const mistralClient = new MistralClient(apiKey);
 
   const embeddingsResponse = await mistralClient.embeddings({
     model: "mistral-embed",
     input: [query],
   });
-
-  const embededResult = embeddingsResponse.data[0].embedding;
-
-  console.log(embededResult[0]);
+  const embededResult = embeddingsResponse.data[0].embedding;;
 
   let { data, error } = await supabase
     .rpc("hybrid_search", {
@@ -56,13 +50,18 @@ export const getDocuments = async (
     });
 
 
+  //format documents: stringDocs for the llm , ObjectDocs for supabase   
   let strings = "";  
+  const objDocs = [];
   for (let i = 0; i < data.length; i++) {
+    objDocs.push({"content" : data[i].pageContent, "metadata" : {"name" : data[i].metadata.name, "section" : data[i].metadata.section, "uri" : data[i].metadata.uri}})
     strings += "Document: " + i;
-    strings += data[i].content;
+    strings += data[i].pageContent;
   }
+  
+  console.log(objDocs)
 
-  const output = {stringDocs : strings, ObjectDocument : data}
+  const output = {stringDocs : strings, ObjectDocs : objDocs}
 
   return output;
 };

@@ -40,19 +40,21 @@ Deno.serve(async (req) => {
       //Get the mistral async generator to stream
       const streamMistral = await getLLmResponse(userQuery, documentsOutput);
       
+      //write the docs in supabase
       const { data } = await supabaseClient.from("chats").update({
-        documents: documentsOutput.ObjectDocument,
+        documents: documentsOutput.ObjectDocs,
       }).eq("id", chatId);
 
       const stream = new ReadableStream({
         async start(controller) {
+          new TextEncoder().encode(JSON.stringify({"documents" : documentsOutput.ObjectDocs}));
           for await (const chunk of streamMistral) {
-            if (chunk.choices[0].delta.content !== undefined) {
-              controller.enqueue(
-                new TextEncoder().encode(chunk.choices[0].delta.content),
-              );
+              if (chunk.choices[0].delta.content !== undefined) {
+                controller.enqueue(
+                  new TextEncoder().encode(chunk.choices[0].delta.content),
+                );
+              }
             }
-          }
           controller.close();
         },
       });
