@@ -27,6 +27,7 @@ export type SupabaseDocumentObjectType = {
 };
 
 export type DocumentsOutputType = {
+  ids: number[];
   documentsAsString: string;
   documents: DocumentObjectType[];
 };
@@ -74,6 +75,7 @@ Deno.serve(async (req) => {
 
       const stream = new ReadableStream({
         async start(controller) {
+          controller.enqueue(new TextEncoder().encode("#DOC_IDS#" + String(documents.ids)));
           for await (const chunk of streamMistral) {
             if (chunk.choices[0].delta.content !== undefined) {
               controller.enqueue(

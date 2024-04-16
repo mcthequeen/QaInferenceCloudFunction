@@ -17,6 +17,7 @@ export type DocumentObjectType = {
 };
 
 export type SupabaseDocumentObjectType = {
+  id: number;
   pageContent: string;
   metadata: {
     name: string;
@@ -70,12 +71,13 @@ export const getDocuments = async (
   if (error) {
     throw new Error(`Supabase RPC error: ${error.message}`);
   }
-
-  // Format documents: stringDocs for the LLM, ObjectDocs for Supabase
+  
   let strings = "";
+  const ids: number[] = [];
   const objDocs: DocumentObjectType[] = [];
   data.forEach((datum: SupabaseDocumentObjectType, index: number) => {
-    const { pageContent, metadata } = datum;
+    const { pageContent, metadata, id } = datum;
+    ids.push(id)
     objDocs.push({
       content: pageContent,
       metadata: {
@@ -85,9 +87,7 @@ export const getDocuments = async (
       },
     });
     strings += `Document ${index}:\n${pageContent}\n`;
-  });
+  });  
 
-  console.log(objDocs);
-
-  return { documentsAsString: strings, documents: objDocs };
+  return { documentsAsString: strings, documents: objDocs, ids };
 };
