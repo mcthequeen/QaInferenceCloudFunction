@@ -1,4 +1,3 @@
-import { SupabaseVectorStore } from "https://esm.sh/@langchain/community/vectorstores/supabase";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import MistralClient from "https://esm.sh/@mistralai/mistralai";
 
@@ -30,7 +29,6 @@ export type DocumentsOutputType = {
   documentsAsString: string;
   documents: DocumentObjectType[];
 };
-
 
 export const getDocuments = async (
   userQuery: UserQueryType[],

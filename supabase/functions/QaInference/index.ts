@@ -86,7 +86,6 @@ Deno.serve(async (req) => {
               );
             }
           }
-          console.log("wholemessage", wholeMessage);
           await supabaseClient.from("chats").update({
             content: wholeMessage,
           }).eq("id", chatId);
