@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
 
       //write the docs in supabase
       await supabaseClient.from("chats").update({
-        documents: documents.documents,
+        documents: documents.ids,
       }).eq("id", chatId);
 
       const stream = new ReadableStream({
