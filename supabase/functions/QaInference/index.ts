@@ -73,19 +73,28 @@ Deno.serve(async (req) => {
         documents: documents.ids,
       }).eq("id", chatId);
 
+      
       const stream = new ReadableStream({
         async start(controller) {
+          let wholeMessage = "";
           controller.enqueue(new TextEncoder().encode("<#DOC_IDS#>" + String(documents.ids) + "</#DOC_IDS#>"));
           for await (const chunk of streamMistral) {
             if (chunk.choices[0].delta.content !== undefined) {
+              wholeMessage += chunk.choices[0].delta.content;
               controller.enqueue(
                 new TextEncoder().encode(chunk.choices[0].delta.content),
               );
             }
           }
+          console.log("wholemessage", wholeMessage);
+          await supabaseClient.from("chats").update({
+            content: wholeMessage,
+          }).eq("id", chatId);
           controller.close();
         },
       });
+
+
       return new Response(stream, {
         headers: {
           ...corsHeaders,
