@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
 
       const stream = new ReadableStream({
         async start(controller) {
-          controller.enqueue(new TextEncoder().encode("#DOC_IDS#" + String(documents.ids)));
+          controller.enqueue(new TextEncoder().encode("<#DOC_IDS#>" + String(documents.ids) + "</#DOC_IDS#>"));
           for await (const chunk of streamMistral) {
             if (chunk.choices[0].delta.content !== undefined) {
               controller.enqueue(
